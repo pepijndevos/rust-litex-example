@@ -1,0 +1,19 @@
+[package]
+name = "litex-example"
+version = "0.1.0"
+authors = ["Pepijn de Vos <pepijndevos@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+riscv = "0.6.0"
+riscv-rt = "0.8.0"
+litex-pac = { path = "../litex-pac", features = ["rt"]}
+litex-hal = { path = "../litex-hal"}
+panic-halt = "0.2.0"
+embedded-graphics = "0.6.2"
+embedded-hal = {version = "0.2.4", features = ["unproven"]}
+nb = "1.0.0"
+ssd1306 = "0.4.0"
+display-interface = "0.4"
+display-interface-i2c = "0.4"
+display-interface-spi = "0.4"
