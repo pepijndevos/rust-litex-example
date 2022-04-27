@@ -13,15 +13,15 @@ use litex_pac as pac;
 use litex_hal as hal;
 use riscv_rt::entry;
 
+
 use embedded_graphics::{
-    fonts::{Font6x8, Text},
+    mono_font::{ascii::FONT_6X10, MonoTextStyleBuilder},
     pixelcolor::BinaryColor,
     prelude::*,
-    primitives::{Circle, Rectangle, Triangle},
-    style::PrimitiveStyleBuilder,
-    style::TextStyleBuilder,
+    text::{Baseline, Text},
+    primitives::{Circle, Rectangle, Triangle, PrimitiveStyleBuilder},
 };
-use ssd1306::{prelude::*, Builder};
+use ssd1306::{prelude::*, Ssd1306};
 
 hal::uart! {
     UART: pac::UART,
@@ -58,10 +58,10 @@ fn main() -> ! {
         }
     }
 
-    let mut dc = CTL { index: 0 };
+    let dc = CTL { index: 0 };
     let mut rstn = CTL { index: 1 };
     let mut csn = CTL { index: 2 };
-    let mut spi = SPI {
+    let spi = SPI {
         registers: peripherals.OLED_SPI
     };
     let mut delay = TIMER {
@@ -71,7 +71,9 @@ fn main() -> ! {
 
     csn.set_low().unwrap();
     let interface = display_interface_spi::SPIInterfaceNoCS::new(spi, dc);
-    let mut disp: GraphicsMode<_> = Builder::new().with_rotation(DisplayRotation::Rotate180).connect(interface).into();
+    let mut disp = Ssd1306::new(interface, DisplaySize128x64, DisplayRotation::Rotate180)
+        .into_buffered_graphics_mode();
+
 
     disp.reset(&mut rstn, &mut delay).unwrap();
     disp.init().unwrap();
@@ -88,7 +90,7 @@ fn main() -> ! {
         // screen outline
         // default display size is 128x64 if you don't pass a _DisplaySize_
         // enum to the _Builder_ struct
-        Rectangle::new(Point::new(0, 0), Point::new(127, 63))
+        Rectangle::with_corners(Point::new(0, 0), Point::new(127, 63))
             .into_styled(style)
             .draw(&mut disp)
             .unwrap();
@@ -104,13 +106,13 @@ fn main() -> ! {
         .unwrap();
 
         // square
-        Rectangle::new(Point::new(52, yoffset), Point::new(52 + 16, 16 + yoffset))
+        Rectangle::with_corners(Point::new(52, yoffset), Point::new(52 + 16, 16 + yoffset))
             .into_styled(style)
             .draw(&mut disp)
             .unwrap();
 
         // circle
-        Circle::new(Point::new(96, yoffset + 8), 8)
+        Circle::new(Point::new(88, yoffset), 18)
             .into_styled(style)
             .draw(&mut disp)
             .unwrap();
@@ -121,17 +123,16 @@ fn main() -> ! {
         disp.clear();
         // text
 
-        let text_style = TextStyleBuilder::new(Font6x8)
+        let text_style = MonoTextStyleBuilder::new()
+            .font(&FONT_6X10)
             .text_color(BinaryColor::On)
             .build();
 
-        Text::new("Hello world!", Point::zero())
-            .into_styled(text_style)
+        Text::with_baseline("Hello world!", Point::zero(), text_style, Baseline::Top)
             .draw(&mut disp)
             .unwrap();
 
-        Text::new("Hello Rust!", Point::new(0, 16))
-            .into_styled(text_style)
+        Text::with_baseline("Hello Rust!", Point::new(0, 16), text_style, Baseline::Top)
             .draw(&mut disp)
             .unwrap();
 
