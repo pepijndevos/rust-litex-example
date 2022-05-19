@@ -7,7 +7,7 @@ edition = "2021"
 [dependencies]
 riscv = "0.8.0"
 riscv-rt = "0.8.1"
-litex-pac = { path = "../litex-pac", features = ["rt"]}
+litex-pac = { path = "../colorlight-pac", features = ["rt"]}
 litex-hal = { path = "../rust-litex-hal"}
 panic-halt = "0.2.0"
 embedded-graphics = "0.7.1"
