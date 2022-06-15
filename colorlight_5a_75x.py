@@ -54,13 +54,14 @@ from litex.soc.cores.clock import *
 from litex.soc.integration.soc_core import *
 from litex.soc.integration.builder import *
 from litex.soc.cores.led import LedChaser
+from litex.soc.cores.pwm import PWM
 
 from litedram.modules import M12L16161A, M12L64322A
 from litedram.phy import GENSDRPHY, HalfRateGENSDRPHY
 
 from liteeth.phy.ecp5rgmii import LiteEthPHYRGMII
 
-from stepper.stepper import Stepper
+from stepper.stepper import Modegen, Stepper
 
 # CRG ----------------------------------------------------------------------------------------------
 
@@ -180,11 +181,39 @@ class BaseSoC(SoCCore):
 
         # Stepper drivers
         platform.add_source("stepper/stepper.v")
+        platform.add_source("stepper/modegen.v")
         _steppers = [
-            ("H1", 0, Pins("j1:0 j1:1 j1:2 j1:4"), IOStandard("LVCMOS33"))
+            #                reset        mode2          mode1
+            ("CTL", 0, Pins("j1:9 j1:14   j1:10 j1:11   j1:12 j1:13"), IOStandard("LVCMOS33")),
+            #               A1   B1   A2   B2   ST1  ST2
+            ("H1", 0, Pins("j1:0 j1:1 j1:2 j1:4 j1:5 j1:6"), IOStandard("LVCMOS33")),
+            ("H2", 0, Pins("j2:0 j2:1 j2:2 j2:4 j2:5 j2:6"), IOStandard("LVCMOS33")),
+            ("H3", 0, Pins("j3:0 j3:1 j3:2 j3:4 j3:5 j3:6"), IOStandard("LVCMOS33")),
+            ("H4", 0, Pins("j4:0 j4:1 j4:2 j4:4 j4:5 j4:6"), IOStandard("LVCMOS33")),
+            ("H5", 0, Pins("j5:0 j5:1 j5:2 j5:4 j5:5 j5:6"), IOStandard("LVCMOS33")),
+            ("H6", 0, Pins("j6:0 j6:1 j6:2 j6:4 j6:5 j6:6"), IOStandard("LVCMOS33")),
+            ("H7", 0, Pins("j7:0 j7:1 j7:2 j7:4 j7:5 j7:6"), IOStandard("LVCMOS33")),
+            ("H8", 0, Pins("j8:0 j8:1 j8:2 j8:4 j8:5 j8:6"), IOStandard("LVCMOS33")),
         ]
         platform.add_extension(_steppers)
-        self.submodules.stepper1 = Stepper(H=platform.request("H1"))
+        ctl = platform.request("CTL")
+        en = Signal()
+        mode = Signal(2)
+        self.submodules.modegen = Modegen(enable=en, mode=mode)
+        self.comb += [
+            ctl[0].eq(en),
+            ctl[1].eq(en),
+            ctl[2:4].eq(mode),
+            ctl[4:6].eq(mode),
+        ]
+        for i in range(8):
+            header = platform.request(f"H{i+1}")
+            setattr(self.submodules, f"pwm_a{i}", PWM(header[0]))
+            setattr(self.submodules, f"pwm_b{i}", PWM(header[1]))
+            setattr(self.submodules, f"pwm_c{i}", PWM(header[2]))
+            setattr(self.submodules, f"pwm_d{i}", PWM(header[3]))
+            setattr(self.submodules, f"stepper_a{i}", Stepper(mode, header[4]))
+            setattr(self.submodules, f"stepper_b{i}", Stepper(mode, header[5]))
 
 
 # Build --------------------------------------------------------------------------------------------

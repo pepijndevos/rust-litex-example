@@ -20,6 +20,7 @@ run : force
 
 synth: force
 	$(GHDL) --synth $(GHDLFLAGS) --out=verilog stepper > stepper.v
+	$(GHDL) --synth $(GHDLFLAGS) --out=verilog modegen > modegen.v
 
 # Targets to analyze libraries
 init: force
@@ -32,6 +33,7 @@ init: force
 	# /usr/local/lib/ghdl/std/v08/../../src/std/env.vhdl
 	# /usr/local/lib/ghdl/std/v08/../../src/std/env-body.vhdl
 	$(GHDL) -a $(GHDLFLAGS) stepper.vhdl
+	$(GHDL) -a $(GHDLFLAGS) modegen.vhdl
 	$(GHDL) -a $(GHDLFLAGS) stepper_tb.vhdl
 
 force:

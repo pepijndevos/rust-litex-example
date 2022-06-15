@@ -3,75 +3,71 @@ use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
 entity stepper is
+  generic (
+      delay: integer := 10
+  );
   port (
     clk : in std_logic;
     rst : in std_logic;
     steps, period : in std_logic_vector(31 downto 0);
-    strobe : in std_logic;
-    H : out std_logic_vector(3 downto 0)
+    steps_wr : in std_logic;
+    mode : in std_logic_vector(1 downto 0);
+    step_out : out std_logic
   );
 end stepper;
 
 architecture rtl of stepper is
-    signal counter : unsigned(31 downto 0);
-    signal step : std_logic;
+    type motor_state_t is (IDLE, INIT, FWD, REV);
+    signal motor_state : motor_state_t;
     signal stepsrem : unsigned(31 downto 0);
-    signal stepdir : std_logic;
-    signal stepidx : unsigned(1 downto 0);
+    signal counter : unsigned(31 downto 0);
+    signal mode_en : std_logic;
+    signal mode_sr : std_logic_vector(delay downto 0);
 begin
   proc : process (clk, rst)
   begin
     if rising_edge(clk) then
       if (rst = '1') then
-        counter <= (others => '0');
-        step <= '0';
         stepsrem <= (others => '0');
-        stepdir <= '0';
-        stepidx <= (others => '0');
-        H <= "0000";
+        step_out <= '0';
+        motor_state <= IDLE;
       else
-        -- generate step pulse
-        if counter < unsigned(period) then
-            counter <= counter + 1;
-            step <= '0';
-        else
-            counter <= (others => '0');
-            step <= '1';
-            if stepdir = '1' then
-                stepidx <= stepidx + 1;
+        -- create a pulse when mode LSB changes
+        mode_sr <= mode_sr(mode_sr'high-1 downto 0) & mode(0);
+
+        -- a mode change happened
+        if mode_en then
+            -- increment the counter
+            if (motor_state = INIT and mode = "11") then
+                step_out <= '1';
+                motor_state <= FWD when signed(steps) > 0 else REV;
+            elsif (motor_state = FWD  and mode = "10")
+                or (motor_state = REV  and mode = "01") then
+                if counter < unsigned(period) then
+                    counter <= counter + 1;
+                    step_out <= '0';
+                else -- reset the counter and perform a step
+                    counter <= (others => '0');
+                    step_out <= '1';
+                    stepsrem <= stepsrem -1;
+                end if;
             else
-                stepidx <= stepidx - 1;
+                step_out <= '0';
             end if;
-        end if;
+                
+            if (stepsrem = 0) then
+                motor_state <= IDLE;
+            end if;
+        end if; -- mode_en
+
 
         -- set interal state on CPU write
-        if (strobe = '1') then
+        if (steps_wr = '1') then
             stepsrem <= unsigned(steps) when signed(steps) > 0 else unsigned(-signed(steps));
-            stepdir <= '1' when signed(steps) > 0 else '0';
-        end if;
-        -- Step C0 C1 C2 C3
-        --    1  1  0  1  0
-        --    2  0  1  1  0
-        --    3  0  1  0  1
-        --    4  1  0  0  1 
-        if (step = '1') then
-            if (stepsrem > 0) then
-                stepsrem <= stepsrem -1;
-                case stepidx is
-                    when "00" => H <= "1010";
-                    when "01" => H <= "0110";
-                    when "10" => H <= "0101";
-                    when "11" => H <= "1001";
-                    when others => H <= "0000";
-                end case;
-            else
-                H <= "0000";
-            end if;
-        end if;
-      end if;
-
-    end if;
+            motor_state <= INIT;
+        end if; -- step_wr
+      end if; -- rst
+    end if; -- clk
   end process;
-  --   s <= i0 xor i1 xor ci;
-  --   co <= (i0 and i1) or (i0 and ci) or (i1 and ci);
+  mode_en <= mode_sr(mode_sr'high) xor mode_sr(mode_sr'high-1);
 end rtl;
