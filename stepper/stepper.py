@@ -31,7 +31,7 @@ class Modegen(Module, AutoCSR):
             self.add_csr(clock_domain)
 
     def add_csr(self, clock_domain):
-        self._enable  = CSRStorage(1, description="""Enable mode generation""")
+        self._enable  = CSRStorage(1, reset=1, description="""Enable mode generation""")
 
         n = 0 if clock_domain == "sys" else 2
         self.specials += [
