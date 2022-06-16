@@ -19,6 +19,7 @@ end stepper;
 architecture rtl of stepper is
     type motor_state_t is (IDLE, INIT, FWD, REV);
     signal motor_state : motor_state_t := IDLE;
+    signal stepsign : boolean;
     signal stepsrem : unsigned(31 downto 0) := (others => '0');
     signal counter : unsigned(31 downto 0) := (others => '0');
     signal mode_en : std_logic := '0';
@@ -29,8 +30,8 @@ begin
     if rising_edge(clk) then
       if (rst = '1') then
         step_out <= '0';
-        stepsrem <= unsigned(steps) when signed(steps) > 0 else unsigned(-signed(steps));
-        motor_state <= IDLE when signed(steps) = 0 else INIT;
+        stepsrem <= unsigned(steps) when stepsign else unsigned(-signed(steps));
+        motor_state <= IDLE when stepsign else INIT;
       else
         -- create a pulse when mode LSB changes
         mode_sr <= mode_sr(mode_sr'high-1 downto 0) & mode(0);
@@ -40,7 +41,7 @@ begin
             -- increment the counter
             if (motor_state = INIT and mode = "11") then
                 step_out <= '1';
-                motor_state <= FWD when signed(steps) > 0 else REV;
+                motor_state <= FWD when stepsign else REV;
             elsif (motor_state = FWD  and mode = "10")
                 or (motor_state = REV  and mode = "01") then
                 if counter < unsigned(period) then
@@ -63,11 +64,12 @@ begin
 
         -- set interal state on CPU write
         if (steps_wr = '1') then
-            stepsrem <= unsigned(steps) when signed(steps) > 0 else unsigned(-signed(steps));
+            stepsrem <= unsigned(steps) when stepsign else unsigned(-signed(steps));
             motor_state <= INIT;
         end if; -- step_wr
       end if; -- rst
     end if; -- clk
   end process;
   mode_en <= mode_sr(mode_sr'high) xor mode_sr(mode_sr'high-1);
+  stepsign <= steps(31) = '0';
 end rtl;
