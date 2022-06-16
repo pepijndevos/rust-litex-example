@@ -18,19 +18,19 @@ end stepper;
 
 architecture rtl of stepper is
     type motor_state_t is (IDLE, INIT, FWD, REV);
-    signal motor_state : motor_state_t;
-    signal stepsrem : unsigned(31 downto 0);
-    signal counter : unsigned(31 downto 0);
-    signal mode_en : std_logic;
-    signal mode_sr : std_logic_vector(delay downto 0);
+    signal motor_state : motor_state_t := IDLE;
+    signal stepsrem : unsigned(31 downto 0) := (others => '0');
+    signal counter : unsigned(31 downto 0) := (others => '0');
+    signal mode_en : std_logic := '0';
+    signal mode_sr : std_logic_vector(delay downto 0) := (others => '0');
 begin
   proc : process (clk, rst)
   begin
     if rising_edge(clk) then
       if (rst = '1') then
-        stepsrem <= (others => '0');
         step_out <= '0';
-        motor_state <= IDLE;
+        stepsrem <= unsigned(steps) when signed(steps) > 0 else unsigned(-signed(steps));
+        motor_state <= IDLE when signed(steps) = 0 else INIT;
       else
         -- create a pulse when mode LSB changes
         mode_sr <= mode_sr(mode_sr'high-1 downto 0) & mode(0);

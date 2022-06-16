@@ -197,8 +197,9 @@ class BaseSoC(SoCCore):
         ]
         platform.add_extension(_steppers)
         ctl = platform.request("CTL")
-        en = Signal()
-        mode = Signal(2)
+        ctl.reset_less=True
+        en = Signal(reset_less=True)
+        mode = Signal(2, reset_less=True)
         self.submodules.modegen = Modegen(enable=en, mode=mode)
         self.comb += [
             ctl[0].eq(en),
@@ -208,6 +209,7 @@ class BaseSoC(SoCCore):
         ]
         for i in range(8):
             header = platform.request(f"H{i+1}")
+            header.reset_less=True
             setattr(self.submodules, f"pwm_a{i}", PWM(header[0]))
             setattr(self.submodules, f"pwm_b{i}", PWM(header[1]))
             setattr(self.submodules, f"pwm_c{i}", PWM(header[2]))
